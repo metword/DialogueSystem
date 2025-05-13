@@ -1,5 +1,5 @@
 {
-  "name": "com.metword.DialogueSystem",
+  "name": "com.metword.dialoguesystem",
   "version": "0.0.1",
   "displayName": "Dialogue System",
   "description": "Dialogue System Package for parsing dialogue scripts and rendering custom formatting on TMP objects",
