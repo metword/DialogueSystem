@@ -1,0 +1,18 @@
+-Start
+Tom: Hello there how are you?
+-> Good
+	Tom: Glad you're doing well!
+-> Bad
+	Tom: Sorry to hear that!
+Tom: Hope you have a great rest of your day $name(person)! # name is the name of the player
+-> Yeah thanks! > Function(true, hello) | Woot
+
+- Woot
+Woot: woot woot! [DialogueID]
+> DisableOption() [FunctionID]
+-> Hello there! [OptionID]
+	Tom: Hi!
+-> Woot woot!
+-> Wowie!
+Tom: Bye!
+You: Bye bye...

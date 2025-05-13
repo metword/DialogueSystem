@@ -1,0 +1,8 @@
+-Start
+Bob: Hello there!
+-> Say hi
+    You: Hi bob!
+-> Brush him off
+    Bob: \:\\(
+Bob: Have a $bold(good) day!
+You: Verity out
