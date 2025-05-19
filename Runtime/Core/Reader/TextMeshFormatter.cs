@@ -44,6 +44,43 @@ namespace DialogueSystem
         }
 
         /// <summary>
+        /// Add a format to the Textformatter using the specified params
+        /// </summary>
+        /// <param name="id">Id for the formatter</param>
+        /// <param name="startIndex">Beginning of the format (inclusive)</param>
+        /// <param name="endIndex">End of the format (exclusive)</param>
+        /// <param name="format">Format being added</param>
+        public void AddFormat(string id, int startIndex, int endIndex, Format format)
+        {
+            identifiedString.AddBounds(id, startIndex, endIndex);
+
+            if (!formats.ContainsKey(id))
+            {
+                formats.Add(id, new List<Format>());
+            }
+
+            formats[id].Add(format);
+        }
+
+        /// <summary>
+        /// Adds a format to the formatter that extends the whole bounds of the
+        /// string
+        /// </summary>
+        /// <param name="id">Id for the formatter</param>
+        /// <param name="format">Format being added</param>
+        public void AddFormat(string id, Format format)
+        {
+            identifiedString.AddBounds(id, 0, identifiedString.GetText().Length);
+
+            if (!formats.ContainsKey(id))
+            {
+                formats.Add(id, new List<Format>());
+            }
+
+            formats[id].Add(format);
+        }
+
+        /// <summary>
         /// Updates all formats on the formatted TextMesh
         /// </summary>
         /// <param name="time">Time of the animation occurring</param>

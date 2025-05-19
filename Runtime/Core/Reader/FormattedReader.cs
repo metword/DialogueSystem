@@ -1,3 +1,4 @@
+using Codice.Client.BaseCommands;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,8 +20,11 @@ namespace DialogueSystem
         [SerializeField] private TextMeshProUGUI lineTextMesh;
         [SerializeField] private TextMeshProUGUI speakerTextMesh;
         [SerializeField] private List<TextMeshProUGUI> optionTextMeshes;
+        [SerializeField] private bool keepTextOnNext;
 
         private Dictionary<string, List<Format>> formats;
+        private Dictionary<FormatLocation, List<Format>> globalFormats;
+
 
         // line memmbers
         private List<TextMeshFormatter> lineFormatters;
@@ -35,12 +39,15 @@ namespace DialogueSystem
         private float optionTime;
         private bool canAdvanceOption;
 
+        public Action<DialogueLine> OnDialougeLine { get; set; }
+        public Action<OptionalLine> OnOptionalLine { get; set; }
 
         private void Awake()
         {
             formats = new();
             lineFormatters = new();
             optionFormatters = new();
+            globalFormats = new();
         }
 
         /// <summary>
@@ -57,14 +64,28 @@ namespace DialogueSystem
 
             formats[id].Add(format);
         }
+
+        /// <summary>
+        /// Register a format to be displayed globally on the specified element
+        /// </summary>
+        /// <param name="format">Format rule itself</param>
+        public void RegisterGlobalFormat(FormatLocation location, Format format)
+        {
+           
+            if (!globalFormats.ContainsKey(location))
+                globalFormats.Add(location, new List<Format>());
+
+            globalFormats[location].Add(format);
+        }
+
         public void ReadEnd()
         {
             // when reading the end we should just close all formatters
-            CleanUp();
+            CleanUp(!keepTextOnNext, !keepTextOnNext);
         }
         public void ReadLine(DialogueLine line, Action callback)
         {
-            CleanUp();
+            CleanUp(true, !keepTextOnNext);
 
             string text = line.GetText();
             string speaker = line.GetSpeaker();
@@ -73,15 +94,38 @@ namespace DialogueSystem
 
             // create formatters for the line and the speaker
             // save those formatters and then update them every frame
-            lineFormatters.Add(new(line.GetText(), lineTextMesh, formats, AddFinishCallback(bools, allTrue)));
-            lineFormatters.Add(new(line.GetSpeaker(), speakerTextMesh, formats, AddFinishCallback(bools, allTrue)));
+            TextMeshFormatter lineFormatter = new(line.GetText(), lineTextMesh, formats, AddFinishCallback(bools, allTrue));
+            TextMeshFormatter speakerFormatter = new(line.GetSpeaker(), speakerTextMesh, formats, AddFinishCallback(bools, allTrue));
+
+            // technical debt? i don't think so!
+            if (globalFormats.TryGetValue(FormatLocation.Line, out List<Format> lineFormats))
+            {
+                foreach (Format format in lineFormats)
+                {
+                    lineFormatter.AddFormat("§", format);
+                }
+            }
+            if (globalFormats.TryGetValue(FormatLocation.Speaker, out List<Format> speakerFormats))
+            {
+                foreach (Format format in speakerFormats)
+                {
+                    speakerFormatter.AddFormat("§", format);
+                }
+            }
+
+            lineFormatters.Add(lineFormatter);
+            lineFormatters.Add(speakerFormatter);
 
             lineTime = Time.time;
             lineCallback = callback;
+
+            Update();
+            OnDialougeLine?.Invoke(line);
         }
+
         public void ReadOption(OptionalLine option, Action<string> callback)
         {
-            CleanUp();
+            CleanUp(!keepTextOnNext, true);
 
             int visibleOptions = Math.Min(option.CountOptions(), optionTextMeshes.Count);
             List<bool> bools = new();
@@ -94,12 +138,23 @@ namespace DialogueSystem
                 TextMeshProUGUI textMesh = optionTextMeshes[i];
                 TextMeshFormatter newFormatter = new(selected.Text, textMesh, formats, AddFinishCallback(bools, allTrue));
 
+                if (globalFormats.TryGetValue(FormatLocation.Option, out List<Format> optionFormats))
+                {
+                    foreach (Format format in optionFormats)
+                    {
+                        newFormatter.AddFormat("§", format);
+                    }
+                }
+
                 optionFormatters.Add(newFormatter);
             }
 
             optionTime = Time.time;
             optionCallback = callback;
             currentOption = option;
+
+            Update();
+            OnOptionalLine?.Invoke(option);
         }
 
         /// <summary>
@@ -161,6 +216,15 @@ namespace DialogueSystem
             lineTextMesh = textMesh;
         }
 
+        /// <summary>
+        /// Should text remain after the next line is displayed?
+        /// </summary>
+        /// <param name="keep">Keep or not</param>
+        public void SetKeepTextOnNext(bool keep)
+        {
+            this.keepTextOnNext = keep;
+        }
+
         public void AddOptionTextMesh(TextMeshProUGUI textMesh)
         {
             optionTextMeshes ??= new();
@@ -197,7 +261,11 @@ namespace DialogueSystem
         /// <summary>
         /// Just reset all state to beginning
         /// </summary>
-        private void CleanUp()
+        /// <param name="clearLines">Should the cleanup include clearing
+        /// the lines textmesh?</param>
+        /// <param name="clearOptions">Should the cleanup include clearing
+        /// the options textmesh?</param>
+        private void CleanUp(bool clearLines = true, bool clearOptions = true)
         {
             lineFormatters.Clear();
             optionFormatters.Clear();
@@ -206,13 +274,17 @@ namespace DialogueSystem
             lineTime = -1;
             optionTime = -1;
 
-            lineTextMesh.text = string.Empty;
-            speakerTextMesh.text = string.Empty;
-            optionTextMeshes.ForEach(mesh => mesh.text = string.Empty);
+            // remove text only if don't want to keep it
+            if (clearLines)
+            {
+                lineTextMesh.text = string.Empty;
+                speakerTextMesh.text = string.Empty;
+            }
+            if (clearOptions)
+            {
+                optionTextMeshes.ForEach(mesh => mesh.text = string.Empty);
+            }
         }
-
-        //TODO: possibly add the option to specify default formats that envelop
-        // the entire method? 
 
         public void Update()
         {
@@ -222,7 +294,6 @@ namespace DialogueSystem
                 float deltaLineTime = Time.time - lineTime;
                 foreach (TextMeshFormatter formatter in lineFormatters)
                 {
-
                     formatter?.UpdateFormats(deltaLineTime);
                 }
             }

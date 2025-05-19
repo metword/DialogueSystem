@@ -1,6 +1,6 @@
 {
   "name": "com.metword.dialoguesystem",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "displayName": "Dialogue System",
   "description": "Dialogue System Package for parsing dialogue scripts and rendering custom formatting on TMP objects",
   "unity": "2022.3",
