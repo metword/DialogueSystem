@@ -1,5 +1,10 @@
 # Changes
 ## [beta-0.0.2] - 2025-05-18
+### Formatted Reader fixes
+- Fixed the formatted reader to support multiline options with the same speaker
+- Added a callback for end of dialogue
+
+## [beta-0.0.2] - 2025-05-18
 ### Formatted Reader Global Formats
 - Added a global format option for the fomatted reader
 - Added the ability to toggle on and off clearing text on line read

@@ -217,15 +217,17 @@ namespace DialogueSystemRuntimeTests
 
             bool lineCallback = false;
             bool optionCallback = false;
+            bool end = false;
 
             sequence.AddDialogueReader(reader);
              
             reader.OnDialougeLine += (line) => lineCallback = true;
             reader.OnOptionalLine += (option) => optionCallback = true;
+            reader.OnReadEnd += () => end = true;
 
             Assert.IsFalse(lineCallback, "Callback was called before starting sequence");
 
-            sequence.StartSequence();
+            sequence.StartSequence(); // hello there
 
             yield return null;
 
@@ -235,38 +237,59 @@ namespace DialogueSystemRuntimeTests
             lineCallback = false;
             optionCallback = false;
 
-            reader.AdvanceLine();
+            reader.AdvanceLine(); // -> good bad
 
             Assert.IsFalse(lineCallback);
             Assert.IsTrue(optionCallback);
             lineCallback = false;
             optionCallback = false;
 
-            reader.SelectOption(0);
+            reader.SelectOption(0); // glad your doing well
 
             Assert.IsTrue(lineCallback);
             Assert.IsFalse(optionCallback);
             lineCallback = false;
             optionCallback = false;
 
-            reader.AdvanceLine();
+            reader.AdvanceLine(); // hope great rest of day
 
             Assert.IsTrue(lineCallback);
             Assert.IsFalse(optionCallback);
             lineCallback = false;
             optionCallback = false;
 
-            reader.AdvanceLine();
+            reader.AdvanceLine(); // -> yeah thansk!
             Assert.IsFalse(lineCallback);
             Assert.IsTrue(optionCallback);
             lineCallback = false;
             optionCallback = false;
 
-            reader.SelectOption(0);
+            reader.SelectOption(0); // woot woot!
             Assert.IsTrue(lineCallback);
             Assert.IsFalse(optionCallback);
             lineCallback = false;
             optionCallback = false;
+
+            reader.AdvanceLine(); // -> hello woot wowie
+
+            reader.SelectOption(2); // bye!
+            Assert.IsFalse(end);
+
+            reader.AdvanceLine(); // bye bye!
+
+            reader.AdvanceLine(); // hello!
+            Assert.IsFalse(end);
+
+            reader.AdvanceLine(); // end
+            Assert.IsTrue(end);
+            end = false;
+
+            reader.AdvanceLine();
+            Assert.IsFalse(end);
+
+            reader.SelectOption(0);
+            Assert.IsFalse(end);
+
         }
 
         [UnityTest]
@@ -376,6 +399,50 @@ namespace DialogueSystemRuntimeTests
             Assert.AreEqual("Hello there!", o1.text);
             Assert.AreEqual("Woot woot!", o2.text);
             Assert.AreEqual("Wowie!", o3.text);
+        }
+        [UnityTest]
+        public IEnumerator TestMultilineDialogue()
+        {
+            DialogueParser parser = new();
+            DialogueSequence sequence = parser.Parse("-Start\nTom: hello there : how are you? : hope you're well!");
+
+            sequence.AddDialogueReader(reader);
+
+            sequence.StartSequence();
+             
+            yield return null;
+
+            Assert.AreEqual("Tom", speaker.text);
+            Assert.AreEqual("hello there", line.text);
+
+            reader.AdvanceLine();
+
+            Assert.AreEqual("", speaker.text);
+            Assert.AreEqual("how are you?", line.text);
+
+            reader.AdvanceLine();
+
+            Assert.AreEqual("", speaker.text);
+            Assert.AreEqual("hope you're well!", line.text);
+
+            sequence.SetCurrentNode("Start", 0);
+            sequence.StartSequence();
+            yield return null;
+
+            reader.SetKeepTextOnNext(true);
+
+            Assert.AreEqual("Tom", speaker.text);
+            Assert.AreEqual("hello there", line.text);
+
+            reader.AdvanceLine();
+
+            Assert.AreEqual("Tom", speaker.text);
+            Assert.AreEqual("how are you?", line.text);
+
+            reader.AdvanceLine();
+
+            Assert.AreEqual("Tom", speaker.text);
+            Assert.AreEqual("hope you're well!", line.text);
         }
     }
 }
