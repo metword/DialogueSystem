@@ -41,6 +41,7 @@ namespace DialogueSystem
 
         public Action<DialogueLine> OnDialougeLine { get; set; }
         public Action<OptionalLine> OnOptionalLine { get; set; }
+        public Action OnReadEnd { get; set; }
 
         private void Awake()
         {
@@ -71,7 +72,7 @@ namespace DialogueSystem
         /// <param name="format">Format rule itself</param>
         public void RegisterGlobalFormat(FormatLocation location, Format format)
         {
-           
+
             if (!globalFormats.ContainsKey(location))
                 globalFormats.Add(location, new List<Format>());
 
@@ -81,11 +82,16 @@ namespace DialogueSystem
         public void ReadEnd()
         {
             // when reading the end we should just close all formatters
-            CleanUp(!keepTextOnNext, !keepTextOnNext);
+            CleanUp(keepTextOnNext, keepTextOnNext);
+
+            OnReadEnd?.Invoke();
         }
         public void ReadLine(DialogueLine line, Action callback)
         {
-            CleanUp(true, !keepTextOnNext);
+            // only clear lines if we don't want to keep text on next. The line
+            // will always be cleared below but the speaker may not be cleared
+            // if the speaker exists
+            CleanUp(keepTextOnNext, keepTextOnNext);
 
             string text = line.GetText();
             string speaker = line.GetSpeaker();
@@ -95,9 +101,6 @@ namespace DialogueSystem
             // create formatters for the line and the speaker
             // save those formatters and then update them every frame
             TextMeshFormatter lineFormatter = new(line.GetText(), lineTextMesh, formats, AddFinishCallback(bools, allTrue));
-            TextMeshFormatter speakerFormatter = new(line.GetSpeaker(), speakerTextMesh, formats, AddFinishCallback(bools, allTrue));
-
-            // technical debt? i don't think so!
             if (globalFormats.TryGetValue(FormatLocation.Line, out List<Format> lineFormats))
             {
                 foreach (Format format in lineFormats)
@@ -105,16 +108,27 @@ namespace DialogueSystem
                     lineFormatter.AddFormat("§", format);
                 }
             }
-            if (globalFormats.TryGetValue(FormatLocation.Speaker, out List<Format> speakerFormats))
-            {
-                foreach (Format format in speakerFormats)
-                {
-                    speakerFormatter.AddFormat("§", format);
-                }
-            }
-
             lineFormatters.Add(lineFormatter);
-            lineFormatters.Add(speakerFormatter);
+
+            // only replace the speaker iff it is not empty or we don't want to
+            // keep // Tom: Hello there! : How are you? : Hope you're well
+            // the above example if we keep text on change would keep tom as
+            // speaker for the subsequent lines
+            if (!keepTextOnNext || !string.IsNullOrWhiteSpace(line.GetSpeaker()))
+            {
+                TextMeshFormatter speakerFormatter = new(line.GetSpeaker(), speakerTextMesh, formats, AddFinishCallback(bools, allTrue));
+
+                // technical debt? i don't think so!
+
+                if (globalFormats.TryGetValue(FormatLocation.Speaker, out List<Format> speakerFormats))
+                {
+                    foreach (Format format in speakerFormats)
+                    {
+                        speakerFormatter.AddFormat("§", format);
+                    }
+                }
+                lineFormatters.Add(speakerFormatter);
+            }
 
             lineTime = Time.time;
             lineCallback = callback;
@@ -125,7 +139,8 @@ namespace DialogueSystem
 
         public void ReadOption(OptionalLine option, Action<string> callback)
         {
-            CleanUp(!keepTextOnNext, true);
+            // always clear options
+            CleanUp(keepTextOnNext, false);
 
             int visibleOptions = Math.Min(option.CountOptions(), optionTextMeshes.Count);
             List<bool> bools = new();
@@ -261,11 +276,11 @@ namespace DialogueSystem
         /// <summary>
         /// Just reset all state to beginning
         /// </summary>
-        /// <param name="clearLines">Should the cleanup include clearing
+        /// <param name="keepLines">Should the cleanup include clearing
         /// the lines textmesh?</param>
-        /// <param name="clearOptions">Should the cleanup include clearing
+        /// <param name="keepOptions">Should the cleanup include clearing
         /// the options textmesh?</param>
-        private void CleanUp(bool clearLines = true, bool clearOptions = true)
+        private void CleanUp(bool keepLines = false, bool keepOptions = false)
         {
             lineFormatters.Clear();
             optionFormatters.Clear();
@@ -275,17 +290,21 @@ namespace DialogueSystem
             optionTime = -1;
 
             // remove text only if don't want to keep it
-            if (clearLines)
+            if (!keepLines)
             {
                 lineTextMesh.text = string.Empty;
                 speakerTextMesh.text = string.Empty;
             }
-            if (clearOptions)
+            if (!keepOptions)
             {
-                optionTextMeshes.ForEach(mesh => mesh.text = string.Empty);
+                optionTextMeshes.ForEach(mesh =>
+                {
+                    mesh.text = string.Empty;
+                });
             }
         }
 
+        int i = 0;
         public void Update()
         {
             // iterate over all line formats
