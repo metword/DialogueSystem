@@ -304,9 +304,22 @@ namespace DialogueSystem
             }
         }
 
-        int i = 0;
+        private void ForceMeshUpdates()
+        {
+            lineTextMesh.ForceMeshUpdate();
+            optionTextMeshes.ForEach(mesh => { mesh.ForceMeshUpdate(); });
+        }
+
+        private void UpdateVertexDatas()
+        {
+            lineTextMesh.UpdateVertexData();
+            optionTextMeshes.ForEach(mesh => { mesh.UpdateVertexData(); });
+
+        }
         public void Update()
         {
+            ForceMeshUpdates();
+
             // iterate over all line formats
             if (lineTime >= 0)
             {
@@ -326,6 +339,8 @@ namespace DialogueSystem
                     formatter?.UpdateFormats(deltaOptionTime);
                 }
             }
+
+            UpdateVertexDatas();
         }
     }
 }
