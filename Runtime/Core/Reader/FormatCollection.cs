@@ -45,6 +45,8 @@ namespace DialogueSystem
 
             textMesh.text = text;
 
+            textMesh.ForceMeshUpdate();
+
             return true;
         }
     }
