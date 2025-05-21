@@ -13,8 +13,6 @@ namespace DialogueSystem
     {
         public static bool Bold(float time, int startFormat, int endFormat, TextMeshProUGUI textMesh)
         {
-            textMesh.ForceMeshUpdate(ignoreActiveState:true, forceTextReparsing: true);
-
             TMP_TextInfo info = textMesh.GetTextInfo(textMesh.text);
             TMP_CharacterInfo[] charInfo = info.characterInfo;
 
